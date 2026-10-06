@@ -1,0 +1,197 @@
+# ==============================
+# MNIST DIGIT RECOGNITION
+# ==============================
+
+import warnings
+warnings.filterwarnings('ignore')
+
+import numpy as np
+import matplotlib.pyplot as plt
+import keras
+from keras.datasets import mnist
+from keras.models import Sequential
+from keras.layers import Dense
+
+# ------------------------------
+# Parameters
+# ------------------------------
+batch_size = 120
+num_classes = 10
+epochs = 20
+
+# ------------------------------
+# Load MNIST Dataset
+# ------------------------------
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+# Reshape 28x28 images to 784
+x_train = x_train.reshape(60000, 784)
+x_test = x_test.reshape(10000, 784)
+
+# Convert to float
+x_train = x_train.astype('float32')
+x_test = x_test.astype('float32')
+
+# Normalize to 0-1
+x_train /= 255
+x_test /= 255
+
+print(x_train.shape[0], 'train samples')
+print(x_test.shape[0], 'test samples')
+
+# Convert labels to one-hot encoding
+y_train = keras.utils.to_categorical(y_train, num_classes)
+y_test = keras.utils.to_categorical(y_test, num_classes)
+
+# ------------------------------
+# Display Test Image
+# ------------------------------
+print("Label:", y_test[250:251])
+
+plt.imshow(x_test[250].reshape(28, 28), cmap='gray')
+plt.title("MNIST Test Image")
+plt.show()
+
+# ------------------------------
+# Create Neural Network
+# ------------------------------
+first_layer_size = 32
+
+model = Sequential()
+
+model.add(Dense(
+    first_layer_size,
+    activation='sigmoid',
+    input_shape=(784,)
+))
+
+model.add(Dense(128, activation='sigmoid'))
+
+model.add(Dense(64, activation='sigmoid'))
+
+model.add(Dense(num_classes, activation='softmax'))
+
+# Display model
+model.summary()
+
+# ------------------------------
+# Visualize First Layer Weights
+# ------------------------------
+w = []
+
+for layer in model.layers:
+    weights = layer.get_weights()
+    w.append(weights)
+
+layer1 = np.array(w[0][0])
+
+print("Shape of First Layer:", layer1.shape)
+print("Visualization of First Layer")
+
+fig = plt.figure(figsize=(12, 12))
+
+columns = 8
+rows = int(first_layer_size / 8)
+
+for i in range(1, columns * rows + 1):
+    fig.add_subplot(rows, columns, i)
+    plt.imshow(
+        layer1[:, i-1].reshape(28, 28),
+        cmap='gray'
+    )
+    plt.axis('off')
+
+plt.show()
+
+# ------------------------------
+# Compile Model
+# ------------------------------
+model.compile(
+    loss='categorical_crossentropy',
+    optimizer='adam',
+    metrics=['accuracy']
+)
+
+# ------------------------------
+# Train Model
+# ------------------------------
+history = model.fit(
+    x_train,
+    y_train,
+    batch_size=batch_size,
+    epochs=epochs,
+    verbose=1
+)
+
+# ------------------------------
+# Test Model Accuracy
+# ------------------------------
+loss, accuracy = model.evaluate(
+    x_test,
+    y_test,
+    verbose=0
+)
+
+print("Test Accuracy:", accuracy)
+
+# ==================================================
+# CREATE SYNTHETIC IMAGE OF DIGIT 9
+# ==================================================
+
+synthetic_img = np.zeros((28, 28), dtype=np.float32)
+
+# Top part of 9
+synthetic_img[5:8, 9:19] = 1.0
+
+# Left side
+synthetic_img[7:15, 8:11] = 1.0
+
+# Right side
+synthetic_img[7:21, 17:20] = 1.0
+
+# Middle part
+synthetic_img[13:16, 9:19] = 1.0
+
+# ------------------------------
+# Display Synthetic 9
+# ------------------------------
+plt.imshow(synthetic_img, cmap='gray')
+plt.title("Synthetic Test Image - 9")
+plt.axis('off')
+plt.show()
+
+# ------------------------------
+# Prepare Image for Prediction
+# ------------------------------
+synthetic_img_input = synthetic_img.reshape(1, 784)
+
+# ------------------------------
+# Predict
+# ------------------------------
+prediction = model.predict(
+    synthetic_img_input,
+    verbose=0
+)
+
+predicted_digit = np.argmax(prediction)
+
+# ------------------------------
+# Create One-Hot Label
+# ------------------------------
+predicted_label = np.zeros((1, num_classes))
+predicted_label[0, predicted_digit] = 1
+
+# ------------------------------
+# Final Output
+# ------------------------------
+print("\n==============================")
+print("FINAL OUTPUT")
+print("==============================")
+
+print("Prediction Probabilities:")
+print(prediction)
+
+print("\nPredicted Digit:", predicted_digit)
+
+print("\nPredicted One-Hot Label:")
+print(predicted_label) 
