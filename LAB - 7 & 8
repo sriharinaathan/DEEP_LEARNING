@@ -1,0 +1,306 @@
+# ============================================================
+# LAB 7_8: IMAGE DATA AUGMENTATION AND TRANSFER LEARNING
+# USING PRE-TRAINED MODEL (VGG16)
+# CAR vs CAT vs DOG
+# ============================================================
+
+%matplotlib inline
+
+import numpy as np
+import matplotlib.pyplot as plt
+import warnings
+
+from google.colab import drive
+from google.colab import files
+
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from keras.models import Model
+from keras.layers import Input, Flatten, Dense
+from keras.callbacks import ModelCheckpoint
+from keras.applications.vgg16 import VGG16
+from keras.preprocessing import image
+
+warnings.filterwarnings('ignore')
+
+
+# ============================================================
+# 1. MOUNT GOOGLE DRIVE
+# ============================================================
+
+drive.mount('/content/drive')
+
+
+# ============================================================
+# 2. LOAD PRE-TRAINED VGG16
+# ============================================================
+
+model_vgg16_conv = VGG16(
+    weights='imagenet',
+    include_top=False
+)
+
+# Freeze VGG16 layers
+for layer in model_vgg16_conv.layers:
+    layer.trainable = False
+
+
+# ============================================================
+# 3. IMAGE SIZE
+# ============================================================
+
+img_width = 150
+img_height = 150
+
+
+# ============================================================
+# 4. DATASET PATH
+# ============================================================
+
+train_data_dir = '/content/drive/MyDrive/data/train'
+val_data_dir = '/content/drive/MyDrive/data/validation'
+
+
+# ============================================================
+# 5. IMAGE DATA AUGMENTATION
+# ============================================================
+
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True
+)
+
+test_datagen = ImageDataGenerator(
+    rescale=1./255
+)
+
+
+# ============================================================
+# 6. TRAINING DATA
+# ============================================================
+
+train_generator = train_datagen.flow_from_directory(
+    train_data_dir,
+    target_size=(img_width, img_height),
+    batch_size=4,
+    class_mode='categorical'
+)
+
+
+# ============================================================
+# 7. VALIDATION DATA
+# ============================================================
+
+validation_generator = test_datagen.flow_from_directory(
+    val_data_dir,
+    target_size=(img_width, img_height),
+    batch_size=4,
+    class_mode='categorical'
+)
+
+
+# ============================================================
+# 8. CHECK CLASSES
+# ============================================================
+
+print("\nClass Indices:")
+print(train_generator.class_indices)
+
+print("\nTraining Images:",
+      train_generator.samples)
+
+print("Validation Images:",
+      validation_generator.samples)
+
+
+# ============================================================
+# 9. NUMBER OF CLASSES AUTOMATICALLY
+# ============================================================
+
+num_classes = len(train_generator.class_indices)
+
+print("\nNumber of Classes:", num_classes)
+
+
+# ============================================================
+# 10. CREATE MODEL
+# ============================================================
+
+input_layer = Input(
+    shape=(img_width, img_height, 3)
+)
+
+output_vgg16_conv = model_vgg16_conv(input_layer)
+
+x = Flatten()(output_vgg16_conv)
+
+x = Dense(
+    64,
+    activation='relu'
+)(x)
+
+# IMPORTANT: 3 classes
+x = Dense(
+    num_classes,
+    activation='softmax'
+)(x)
+
+model = Model(
+    input_layer,
+    x
+)
+
+
+# ============================================================
+# 11. COMPILE MODEL
+# ============================================================
+
+model.compile(
+    loss='categorical_crossentropy',
+    optimizer='rmsprop',
+    metrics=['accuracy']
+)
+
+model.summary()
+
+
+# ============================================================
+# 12. SAVE BEST MODEL
+# ============================================================
+
+model_weights_file = 'vgg16-xfer-weights.h5'
+
+callbacks = [
+    ModelCheckpoint(
+        model_weights_file,
+        monitor='val_accuracy',
+        save_best_only=True,
+        mode='max'
+    )
+]
+
+
+# ============================================================
+# 13. TRAIN MODEL
+# ============================================================
+
+history = model.fit(
+    train_generator,
+    epochs=5,
+    validation_data=validation_generator,
+    callbacks=callbacks
+)
+
+print("\n================================")
+print("Training Completed!")
+print("================================")
+
+
+# ============================================================
+# 14. UPLOAD IMAGE FOR PREDICTION
+# ============================================================
+
+uploaded = files.upload()
+
+img_path = list(uploaded.keys())[0]
+
+
+# ============================================================
+# 15. LOAD IMAGE
+# ============================================================
+
+img = image.load_img(
+    img_path,
+    target_size=(150, 150)
+)
+
+
+# ============================================================
+# 16. CONVERT IMAGE TO ARRAY
+# ============================================================
+
+x = image.img_to_array(img)
+
+x = np.expand_dims(
+    x,
+    axis=0
+)
+
+
+# ============================================================
+# 17. SAME PREPROCESSING AS TRAINING
+# ============================================================
+
+x = x / 255.0
+
+
+# ============================================================
+# 18. PREDICT
+# ============================================================
+
+prediction = model.predict(
+    x,
+    verbose=0
+)
+
+
+# ============================================================
+# 19. GET PREDICTED CLASS
+# ============================================================
+
+predicted_class = np.argmax(prediction[0])
+
+class_names = list(
+    train_generator.class_indices.keys()
+)
+
+predicted_label = class_names[predicted_class]
+
+confidence = prediction[0][predicted_class] * 100
+
+
+# ============================================================
+# 20. DISPLAY IMAGE AND RESULT
+# ============================================================
+
+plt.figure(figsize=(6, 6))
+
+plt.imshow(img)
+
+plt.title(
+    "Prediction: " + predicted_label +
+    "\nConfidence: " +
+    str(round(confidence, 2)) + "%"
+)
+
+plt.axis('off')
+
+plt.show()
+
+
+# ============================================================
+# 21. PRINT RESULT
+# ============================================================
+
+print("\n================================")
+print("PREDICTION RESULT")
+print("================================")
+
+print("Predicted Label:", predicted_label)
+
+print(
+    "Confidence:",
+    round(confidence, 2),
+    "%"
+)
+
+print("\nPrediction Probabilities:")
+
+for i, class_name in enumerate(class_names):
+    print(
+        class_name,
+        ":",
+        round(prediction[0][i] * 100, 2),
+        "%"
+    )
