@@ -1,0 +1,163 @@
+import numpy as np
+
+# ==========================================
+# INPUT DATA
+# ==========================================
+
+X = np.array(
+    ([2, 2],
+     [3, 3],
+     [4, 4]),
+    dtype=float
+)
+
+y = np.array(
+    ([99],
+     [88],
+     [77]),
+    dtype=float
+)
+
+# Normalize input and output
+X = X / np.amax(X, axis=0)
+y = y / 100
+
+print("Normalized Input:")
+print(X)
+
+print("\nNormalized Output:")
+print(y)
+
+
+# ==========================================
+# SIGMOID FUNCTION
+# ==========================================
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+
+# ==========================================
+# DERIVATIVE OF SIGMOID
+# ==========================================
+
+def derivatives_sigmoid(x):
+    return x * (1 - x)
+
+
+# ==========================================
+# PARAMETERS
+# ==========================================
+
+epoch = 1000
+lr = 0.1
+
+inputlayer_neurons = 2
+hiddenlayer_neurons = 3
+output_neurons = 1
+
+
+# ==========================================
+# WEIGHT AND BIAS INITIALIZATION
+# ==========================================
+
+bh = np.random.uniform(
+    size=(1, hiddenlayer_neurons)
+)
+
+wh = np.random.uniform(
+    size=(inputlayer_neurons, hiddenlayer_neurons)
+)
+
+wout = np.random.uniform(
+    size=(hiddenlayer_neurons, output_neurons)
+)
+
+bout = np.random.uniform(
+    size=(1, output_neurons)
+)
+
+print("\nInitial Hidden Bias:")
+print(bh)
+
+print("\nInitial Hidden Weights:")
+print(wh)
+
+print("\nInitial Output Weights:")
+print(wout)
+
+print("\nInitial Output Bias:")
+print(bout)
+
+
+# ==========================================
+# TRAINING
+# ==========================================
+
+for i in range(epoch):
+
+    # --------------------------------------
+    # FORWARD PROPAGATION
+    # --------------------------------------
+
+    # Input → Hidden Layer
+    hinp1 = np.dot(X, wh)
+
+    hinp = hinp1 + bh
+
+    hlayer_act = sigmoid(hinp)
+
+    # Hidden → Output Layer
+    outinp1 = np.dot(hlayer_act, wout)
+
+    outinp = outinp1 + bout
+
+    output = sigmoid(outinp)
+
+
+    # --------------------------------------
+    # BACKPROPAGATION
+    # --------------------------------------
+
+    # Output error
+    EO = y - output
+
+    # Output gradient
+    outgrad = derivatives_sigmoid(output)
+
+    d_output = EO * outgrad
+
+    # Hidden layer error
+    EH = d_output.dot(wout.T)
+
+    # Hidden layer gradient
+    hiddengrad = derivatives_sigmoid(hlayer_act)
+
+    d_hiddenlayer = EH * hiddengrad
+
+
+    # --------------------------------------
+    # UPDATE WEIGHTS
+    # --------------------------------------
+
+    wout += hlayer_act.T.dot(d_output) * lr
+
+    wh += X.T.dot(d_hiddenlayer) * lr
+
+
+# ==========================================
+# FINAL OUTPUT
+# ==========================================
+
+print("\n====================================")
+print("FINAL RESULT")
+print("====================================")
+
+print("\nInput:")
+print(X)
+
+print("\nActual Output:")
+print(y)
+
+print("\nPredicted Output:")
+print(output)
