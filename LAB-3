@@ -1,0 +1,352 @@
+# ============================================================
+# MNIST - COMPARISON OF DIFFERENT NEURAL NETWORKS
+# ============================================================
+
+import warnings
+warnings.filterwarnings('ignore')
+
+import numpy as np
+import matplotlib.pyplot as plt
+import keras
+
+from keras.datasets import mnist
+from keras.models import Sequential
+from keras.layers import Dense, LeakyReLU
+from keras.optimizers import RMSprop
+
+
+# ============================================================
+# 1. PARAMETERS
+# ============================================================
+
+batch_size = 128
+num_classes = 10
+epochs = 10
+
+
+# ============================================================
+# 2. LOAD MNIST DATASET
+# ============================================================
+
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+# Reshape 28 x 28 images into 784 pixels
+x_train = x_train.reshape(60000, 784)
+x_test = x_test.reshape(10000, 784)
+
+# Convert to float
+x_train = x_train.astype('float32')
+x_test = x_test.astype('float32')
+
+# Normalize 0 to 1
+x_train /= 255
+x_test /= 255
+
+print("Training samples:", x_train.shape[0])
+print("Testing samples:", x_test.shape[0])
+
+# One-hot encoding
+y_train = keras.utils.to_categorical(y_train, num_classes)
+y_test = keras.utils.to_categorical(y_test, num_classes)
+
+
+# ============================================================
+# EXPERIMENT 1
+# Sigmoid - 3 Hidden Layers
+# ============================================================
+
+print("\n==========================================")
+print("EXPERIMENT 1: SIGMOID")
+print("==========================================")
+
+model1 = Sequential([
+    Dense(32, activation='sigmoid', input_shape=(784,)),
+    Dense(32, activation='sigmoid'),
+    Dense(32, activation='sigmoid'),
+    Dense(num_classes, activation='softmax')
+])
+
+model1.compile(
+    loss='categorical_crossentropy',
+    optimizer=RMSprop(),
+    metrics=['accuracy']
+)
+
+history1 = model1.fit(
+    x_train,
+    y_train,
+    batch_size=batch_size,
+    epochs=epochs,
+    verbose=1
+)
+
+score1 = model1.evaluate(x_test, y_test, verbose=0)
+
+print("Test Loss:", score1[0])
+print("Test Accuracy:", score1[1])
+
+
+# ============================================================
+# EXPERIMENT 2
+# Linear Activation
+# ============================================================
+
+print("\n==========================================")
+print("EXPERIMENT 2: LINEAR")
+print("==========================================")
+
+model2 = Sequential([
+    Dense(8, activation='linear', input_shape=(784,)),
+    Dense(8, activation='linear'),
+    Dense(num_classes, activation='softmax')
+])
+
+model2.compile(
+    loss='categorical_crossentropy',
+    optimizer=RMSprop(),
+    metrics=['accuracy']
+)
+
+history2 = model2.fit(
+    x_train,
+    y_train,
+    batch_size=batch_size,
+    epochs=epochs,
+    verbose=1,
+    validation_data=(x_test, y_test)
+)
+
+score2 = model2.evaluate(x_test, y_test, verbose=0)
+
+print("Test Loss:", score2[0])
+print("Test Accuracy:", score2[1])
+
+
+# ============================================================
+# EXPERIMENT 3
+# ReLU
+# ============================================================
+
+print("\n==========================================")
+print("EXPERIMENT 3: RELU")
+print("==========================================")
+
+model3 = Sequential([
+    Dense(8, activation='relu', input_shape=(784,)),
+    Dense(8, activation='relu'),
+    Dense(num_classes, activation='softmax')
+])
+
+model3.compile(
+    loss='categorical_crossentropy',
+    optimizer=RMSprop(),
+    metrics=['accuracy']
+)
+
+history3 = model3.fit(
+    x_train,
+    y_train,
+    batch_size=batch_size,
+    epochs=epochs,
+    verbose=1,
+    validation_data=(x_test, y_test)
+)
+
+score3 = model3.evaluate(x_test, y_test, verbose=0)
+
+print("Test Loss:", score3[0])
+print("Test Accuracy:", score3[1])
+
+
+# ============================================================
+# EXPERIMENT 4
+# Leaky ReLU
+# ============================================================
+
+print("\n==========================================")
+print("EXPERIMENT 4: LEAKY RELU")
+print("==========================================")
+
+model4 = Sequential()
+
+model4.add(Dense(8, input_shape=(784,)))
+model4.add(LeakyReLU(negative_slope=0.1))
+
+model4.add(Dense(8))
+model4.add(LeakyReLU(negative_slope=0.1))
+
+model4.add(Dense(num_classes, activation='softmax'))
+
+model4.compile(
+    loss='categorical_crossentropy',
+    optimizer=RMSprop(),
+    metrics=['accuracy']
+)
+
+history4 = model4.fit(
+    x_train,
+    y_train,
+    batch_size=batch_size,
+    epochs=epochs,
+    verbose=1,
+    validation_data=(x_test, y_test)
+)
+
+score4 = model4.evaluate(x_test, y_test, verbose=0)
+
+print("Test Loss:", score4[0])
+print("Test Accuracy:", score4[1])
+
+
+# ============================================================
+# EXPERIMENT 5
+# Sigmoid - Larger Network
+# ============================================================
+
+print("\n==========================================")
+print("EXPERIMENT 5: LARGE SIGMOID NETWORK")
+print("==========================================")
+
+model5 = Sequential([
+    Dense(128, activation='sigmoid', input_shape=(784,)),
+    Dense(32, activation='sigmoid'),
+    Dense(num_classes, activation='softmax')
+])
+
+model5.compile(
+    loss='categorical_crossentropy',
+    optimizer=RMSprop(),
+    metrics=['accuracy']
+)
+
+history5 = model5.fit(
+    x_train,
+    y_train,
+    batch_size=batch_size,
+    epochs=epochs,
+    verbose=1,
+    validation_data=(x_test, y_test)
+)
+
+score5 = model5.evaluate(x_test, y_test, verbose=0)
+
+print("Test Loss:", score5[0])
+print("Test Accuracy:", score5[1])
+
+
+# ============================================================
+# EXPERIMENT 6
+# Deep ReLU Network
+# ============================================================
+
+print("\n==========================================")
+print("EXPERIMENT 6: DEEP RELU NETWORK")
+print("==========================================")
+
+model6 = Sequential()
+
+model6.add(Dense(8, activation='relu', input_shape=(784,)))
+
+# Add 19 more hidden layers
+for i in range(19):
+    model6.add(Dense(8, activation='relu'))
+
+model6.add(Dense(num_classes, activation='softmax'))
+
+model6.compile(
+    loss='categorical_crossentropy',
+    optimizer=RMSprop(),
+    metrics=['accuracy']
+)
+
+history6 = model6.fit(
+    x_train,
+    y_train,
+    batch_size=batch_size,
+    epochs=epochs,
+    verbose=1,
+    validation_data=(x_test, y_test)
+)
+
+score6 = model6.evaluate(x_test, y_test, verbose=0)
+
+print("Test Loss:", score6[0])
+print("Test Accuracy:", score6[1])
+
+
+# ============================================================
+# EXPERIMENT 7
+# Single Hidden Layer - Sigmoid
+# ============================================================
+
+print("\n==========================================")
+print("EXPERIMENT 7: SINGLE HIDDEN LAYER")
+print("==========================================")
+
+model7 = Sequential([
+    Dense(128, activation='sigmoid', input_shape=(784,)),
+    Dense(num_classes, activation='softmax')
+])
+
+model7.compile(
+    loss='categorical_crossentropy',
+    optimizer=RMSprop(),
+    metrics=['accuracy']
+)
+
+history7 = model7.fit(
+    x_train,
+    y_train,
+    batch_size=batch_size,
+    epochs=epochs,
+    verbose=1,
+    validation_data=(x_test, y_test)
+)
+
+score7 = model7.evaluate(x_test, y_test, verbose=0)
+
+print("Test Loss:", score7[0])
+print("Test Accuracy:", score7[1])
+
+
+# ============================================================
+# FINAL COMPARISON
+# ============================================================
+
+print("\n\n==========================================")
+print("FINAL ACCURACY COMPARISON")
+print("==========================================")
+
+results = {
+    "Sigmoid - 3 Layers": score1[1],
+    "Linear": score2[1],
+    "ReLU": score3[1],
+    "Leaky ReLU": score4[1],
+    "Large Sigmoid": score5[1],
+    "Deep ReLU": score6[1],
+    "Single Sigmoid": score7[1]
+}
+
+for name, accuracy in results.items():
+    print(f"{name:25s}: {accuracy:.4f}")
+
+
+# ============================================================
+# ACCURACY GRAPH
+# ============================================================
+
+plt.figure(figsize=(10, 5))
+
+plt.bar(
+    results.keys(),
+    results.values()
+)
+
+plt.title("MNIST Neural Network Accuracy Comparison")
+plt.xlabel("Model")
+plt.ylabel("Test Accuracy")
+plt.xticks(rotation=45)
+plt.ylim(0, 1)
+plt.grid(axis='y')
+
+plt.show()
