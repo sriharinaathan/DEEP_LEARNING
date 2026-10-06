@@ -1,0 +1,267 @@
+# ============================================================
+# VGG16 - OBJECT PREDICTION
+# IMAGE → HUMAN-FRIENDLY OBJECT LABEL
+# ============================================================
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+from google.colab import files
+from tensorflow.keras.applications.vgg16 import VGG16
+from tensorflow.keras.applications.vgg16 import preprocess_input
+from tensorflow.keras.applications.vgg16 import decode_predictions
+from tensorflow.keras.preprocessing import image
+
+
+# ============================================================
+# 1. LOAD VGG16 IMAGENET MODEL
+# ============================================================
+
+model = VGG16(
+    weights='imagenet',
+    include_top=True
+)
+
+print("VGG16 ImageNet Model Loaded!")
+
+
+# ============================================================
+# 2. UPLOAD IMAGE
+# ============================================================
+
+uploaded = files.upload()
+
+file_name = list(uploaded.keys())[0]
+
+
+# ============================================================
+# 3. LOAD IMAGE
+# ============================================================
+
+img = image.load_img(
+    file_name,
+    target_size=(224, 224)
+)
+
+
+# ============================================================
+# 4. CONVERT IMAGE TO ARRAY
+# ============================================================
+
+img_array = image.img_to_array(img)
+
+img_array = np.expand_dims(
+    img_array,
+    axis=0
+)
+
+
+# ============================================================
+# 5. PREPROCESS
+# ============================================================
+
+img_array = preprocess_input(img_array)
+
+
+# ============================================================
+# 6. PREDICT
+# ============================================================
+
+prediction = model.predict(
+    img_array,
+    verbose=0
+)
+
+
+# ============================================================
+# 7. GET TOP 5 PREDICTIONS
+# ============================================================
+
+results = decode_predictions(
+    prediction,
+    top=5
+)[0]
+
+
+# ============================================================
+# 8. CONVERT IMAGENET LABEL TO SIMPLE OBJECT NAME
+# ============================================================
+
+def simple_label(label):
+
+    label = label.lower()
+
+    # Airplane
+    if any(x in label for x in [
+        'airliner',
+        'aircraft',
+        'space_shuttle',
+        'wing'
+    ]):
+        return "Airplane"
+
+    # Cars
+    if any(x in label for x in [
+        'car',
+        'sports_car',
+        'convertible',
+        'limousine',
+        'jeep',
+        'taxi',
+        'racer'
+    ]):
+        return "Car"
+
+    # Dogs
+    if any(x in label for x in [
+        'retriever',
+        'terrier',
+        'spaniel',
+        'shepherd',
+        'poodle',
+        'hound',
+        'dog'
+    ]):
+        return "Dog"
+
+    # Cats
+    if any(x in label for x in [
+        'tabby',
+        'persian_cat',
+        'siamese_cat',
+        'egyptian_cat',
+        'cat'
+    ]):
+        return "Cat"
+
+    # Birds
+    if any(x in label for x in [
+        'bird',
+        'eagle',
+        'owl',
+        'parrot',
+        'peacock',
+        'hen',
+        'rooster',
+        'chick'
+    ]):
+        return "Bird"
+
+    # Horse
+    if any(x in label for x in [
+        'horse',
+        'sorrel'
+    ]):
+        return "Horse"
+
+    # Ship
+    if any(x in label for x in [
+        'ship',
+        'boat',
+        'liner',
+        'canoe',
+        'yacht'
+    ]):
+        return "Ship"
+
+    # Truck
+    if any(x in label for x in [
+        'truck',
+        'trailer',
+        'pickup'
+    ]):
+        return "Truck"
+
+    # Bicycle
+    if any(x in label for x in [
+        'bicycle',
+        'bike'
+    ]):
+        return "Bicycle"
+
+    # Motorcycle
+    if any(x in label for x in [
+        'motorcycle',
+        'motorbike'
+    ]):
+        return "Motorcycle"
+
+    # Person
+    if any(x in label for x in [
+        'person',
+        'man',
+        'woman'
+    ]):
+        return "Person"
+
+    # Return original label if no mapping
+    return label.replace('_', ' ').title()
+
+
+# ============================================================
+# 9. GET FINAL LABEL
+# ============================================================
+
+original_label = results[0][1]
+
+final_label = simple_label(
+    original_label
+)
+
+confidence = results[0][2] * 100
+
+
+# ============================================================
+# 10. DISPLAY IMAGE
+# ============================================================
+
+plt.figure(figsize=(7, 7))
+
+plt.imshow(
+    image.load_img(file_name)
+)
+
+plt.axis('off')
+
+plt.title(
+    "Predicted Object: " + final_label +
+    "\nConfidence: " +
+    str(round(confidence, 2)) + "%"
+)
+
+plt.show()
+
+
+# ============================================================
+# 11. FINAL OUTPUT
+# ============================================================
+
+print("\n========================================")
+print("       OBJECT PREDICTION")
+print("========================================")
+
+print("Original ImageNet Label:", original_label)
+
+print("Predicted Object:", final_label)
+
+print("Confidence:", round(confidence, 2), "%")
+
+
+# ============================================================
+# 12. TOP 5 PREDICTIONS
+# ============================================================
+
+print("\nTop 5 Predictions:")
+
+for i, result in enumerate(results):
+
+    readable = simple_label(result[1])
+
+    print(
+        i + 1,
+        "→",
+        readable,
+        "-",
+        round(result[2] * 100, 2),
+        "%"
+    )
