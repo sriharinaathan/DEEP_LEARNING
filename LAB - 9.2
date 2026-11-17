@@ -1,0 +1,202 @@
+
+# ============================================================
+# RNN WITH LSTM - IMDB MOVIE REVIEW SENTIMENT ANALYSIS
+# Google Colab | Complete Project in One Cell
+# ============================================================
+
+!pip install -q tensorflow scikit-learn matplotlib
+
+import numpy as np
+import matplotlib.pyplot as plt
+import tensorflow as tf
+
+from tensorflow.keras.datasets import imdb
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Embedding, LSTM, Dense, Dropout
+from tensorflow.keras.callbacks import EarlyStopping
+from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
+
+# 1. Configuration
+VOCAB_SIZE = 10000
+MAX_LENGTH = 250
+EPOCHS = 5
+BATCH_SIZE = 128
+tf.keras.utils.set_random_seed(42)
+print("TensorFlow version:", tf.__version__)
+print("GPU available:", bool(tf.config.list_physical_devices("GPU")))
+# 2. Load the IMDB dataset
+print("C:\\Users\\Srihari\\Downloads\\archive (3)\\imdb_top_1000.csv")
+(x_train, y_train), (x_test, y_test) = imdb.load_data(
+    num_words=VOCAB_SIZE
+)
+
+print("Training reviews:", len(x_train))
+print("Testing reviews:", len(x_test))
+
+# 3. Pad reviews to equal length
+x_train = pad_sequences(
+    x_train, maxlen=MAX_LENGTH,
+    padding="post", truncating="post"
+)
+
+x_test = pad_sequences(
+    x_test, maxlen=MAX_LENGTH,
+    padding="post", truncating="post"
+)
+
+# 4. Build the LSTM model
+print("\nBuilding LSTM model...")
+
+model = Sequential([
+    Embedding(
+        input_dim=VOCAB_SIZE,
+        output_dim=64,
+        mask_zero=True
+    ),
+    LSTM(64),
+    Dropout(0.5),
+    Dense(32, activation="relu"),
+    Dense(1, activation="sigmoid")
+])
+
+model.compile(
+    optimizer="adam",
+    loss="binary_crossentropy",
+    metrics=["accuracy"]
+)
+
+model.summary()
+
+# 5. Train the model
+print("\nTraining model...")
+
+early_stopping = EarlyStopping(
+    monitor="val_loss",
+    patience=2,
+    restore_best_weights=True
+)
+
+history = model.fit(
+    x_train,
+    y_train,
+    validation_split=0.2,
+    epochs=EPOCHS,
+    batch_size=BATCH_SIZE,
+    callbacks=[early_stopping],
+    verbose=1
+)
+
+# 6. Evaluate on test data
+print("\nEvaluating model...")
+
+test_loss, test_accuracy = model.evaluate(
+    x_test, y_test, verbose=0
+)
+
+print(f"Test loss: {test_loss:.4f}")
+print(f"Test accuracy: {test_accuracy:.2%}")
+
+# 7. Plot training and validation accuracy/loss
+plt.figure(figsize=(12, 4))
+
+plt.subplot(1, 2, 1)
+plt.plot(history.history["accuracy"], label="Training")
+plt.plot(history.history["val_accuracy"], label="Validation")
+plt.title("Accuracy")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.legend()
+
+plt.subplot(1, 2, 2)
+plt.plot(history.history["loss"], label="Training")
+plt.plot(history.history["val_loss"], label="Validation")
+plt.title("Loss")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.legend()
+
+plt.tight_layout()
+plt.show()
+
+# 8. Generate predictions and classification report
+probabilities = model.predict(x_test, verbose=0).ravel()
+y_pred = (probabilities >= 0.5).astype(int)
+
+print("\nClassification Report:")
+print(classification_report(
+    y_test,
+    y_pred,
+    target_names=["Negative", "Positive"]
+))
+
+cm = confusion_matrix(y_test, y_pred)
+
+ConfusionMatrixDisplay(
+    confusion_matrix=cm,
+    display_labels=["Negative", "Positive"]
+).plot(cmap="Blues")
+
+plt.title("Confusion Matrix")
+plt.show()
+
+# 9. Predict sentiment for custom reviews
+# IMDB's built-in dataset uses its own word-index convention.
+word_index = imdb.get_word_index()
+
+def encode_review(review):
+    tokens = review.lower().split()
+    sequence = [1]  # Start token
+
+    for token in tokens:
+        # Remove common punctuation around words
+        word = token.strip(".,!?;:\"'()[]{}")
+        index = word_index.get(word)
+
+        if index is None or index + 3 >= VOCAB_SIZE:
+            sequence.append(2)  # Out-of-vocabulary token
+        else:
+            sequence.append(index + 3)
+
+    return pad_sequences(
+        [sequence],
+        maxlen=MAX_LENGTH,
+        padding="post",
+        truncating="post"
+    )
+
+def predict_sentiment(review):
+    encoded = encode_review(review)
+    positive_probability = float(
+        model.predict(encoded, verbose=0)[0][0]
+    )
+
+    sentiment = (
+        "POSITIVE 😊"
+        if positive_probability >= 0.5
+        else "NEGATIVE 😞"
+    )
+
+    print("\nReview:", review)
+    print("Sentiment:", sentiment)
+    print(f"Positive probability: {positive_probability:.2%}")
+
+predict_sentiment(
+    "This movie was amazing and wonderful. I loved every moment."
+)
+
+predict_sentiment(
+    "This movie was boring and terrible. I hated it."
+)
+
+# 10. Save the trained model
+model_path = "/content/imdb_lstm_sentiment.keras"
+model.save(model_path)
+
+print("\nModel saved to:", model_path)
+
+# 11. Download the trained model
+from google.colab import files
+files.download(model_path)
+
+print("\nPROJECT COMPLETED SUCCESSFULLY!")
